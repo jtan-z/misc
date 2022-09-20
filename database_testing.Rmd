@@ -1,0 +1,17 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+. 
+
+```{r}
+#install.packages("tidyverse")
+library(tidyverse) # contains dbplyer, backend interface package for R
+```
+
+```{r}
+library(dplyr, warn.conflicts = FALSE)
+con <- DBI:: dbConnect(RSQLite::SQLite(), ":memory:")
+copy_to(con, mtcars)
+```
+

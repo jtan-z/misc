@@ -1,0 +1,1280 @@
+/****** Object:  StoredProcedure [dev].[LoadTableStructure]    Script Date: 9/15/2022 10:02:26 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROC [dev].[LoadTableStructure] AS
+begin
+
+/********************************************************************************************************
+*********************************************************************************************************
+** File:	dev.LoadTableStructure
+** Name:	Shachar Hodes
+** Desc:	Stores the code to create all the table schemas for dw
+** Date:	08/15/2022
+******************************
+** Change History
+******************************
+** PR		Date			Author						Description
+** ----		------------	------------------------	-------------------------------------------------
+** 1.0		08/15/2022		Shachar Hodes				Initial Creation 
+** 1.1      09/06/2022      AP                          Order schema tables 
+*********************************************************************************************************
+********************************************************************************************************/
+
+
+
+--- enforce foreignkey logic on dim SPs
+--- create primary keys for all tables (first column is PK)
+--- SCD are only for Dim Email , Address , Phone
+--- Columns types should be similar or more than source
+--- if schema doesn't exist create it
+--- create logic to test modify date column on separate table 
+--- Key colmuns = Key Columns
+
+-- Action items for each one of the below:
+-- 1. create table
+-- 2. create SP to load from stage to dw assuming that stage table is copy past of source
+
+
+
+--- Insurance - Robert [Done] - 9.16
+--- Eligibility - Robert [Done] - 9.23
+--- HR - Ancy [Done] - 9.23
+--- Auth - Zach [Done] - 9.23
+--- Order - Ancy  [Done] - 9.30
+--- Provider - Robert [Done] - 10.5
+--- BenefitMatrix - Ancy [Done] - 10.13
+--- Contact Center - Ancy / Robert - 10.13  
+--- Flex - Ancy / Robert
+
+
+
+
+if object_id (N'Insurance.DimBenefitRule',N'U') is not null
+drop table Insurance.DimBenefitRule
+CREATE TABLE Insurance.DimBenefitRule
+(
+BenefitRuleKey int not null,
+BenefitRuleDataId int not null,
+BenefitRuleId int not null,
+BenefitCategory	varchar(100) null,
+BenefitCategoryValue int null,
+BenefitType	varchar(50) null,
+BenefitBehaviour varchar(100) null,
+BenefitFrequencyMonths int null,
+BenefitFrequencyType varchar(50) null,	
+BenforType varchar(50) null,
+BenefitValueSource varchar(50) null,
+WalletCode varchar(100) null,
+CreateUser varchar(50) not null,
+CreateDate datetime not null,
+ModifyUser varchar(50) not null,
+ModifyDate datetime not null
+)
+
+ALTER TABLE Insurance.DimBenefitRule
+ADD CONSTRAINT PK_BenefitRuleKey PRIMARY KEY NONCLUSTERED (BenefitRuleKey) NOT ENFORCED;
+
+if object_id (N'Insurance.DimBenefitType',N'U') is not null
+drop table Insurance.DimBenefitType
+CREATE TABLE Insurance.DimBenefitType
+(
+BenefitTypeKey bigint not null,
+BenefitTypeCode varchar(20) not null,
+BenefitTypeName varchar(20) not null
+)
+
+ALTER TABLE Insurance.DimBenefitType
+ADD CONSTRAINT PK_BenefitTypeKey PRIMARY KEY NONCLUSTERED (BenefitTypeKey) NOT ENFORCED;
+
+
+if object_id (N'Insurance.DimContractRule',N'U') is not null
+drop table Insurance.DimContractRule
+CREATE TABLE Insurance.DimContractRule
+(
+ContractRuleKey int not null,
+ContractRuleId int not null,
+IsActive bit not null,
+CreateUser varchar(50) not null,
+CreateDate datetime not null,
+ModifyUser varchar(50) not null,
+ModifyDate datetime not null
+)
+
+ALTER TABLE Insurance.DimContractRule
+ADD CONSTRAINT PK_ContractRuleKey PRIMARY KEY NONCLUSTERED (ContractRuleKey) NOT ENFORCED;
+
+
+if object_id (N'Insurance.DimHpc',N'U') is not null
+drop table Insurance.DimHpc
+CREATE TABLE Insurance.DimHpc
+(
+HpcKey int not null,
+HpcId int not null,
+HpcName varchar(500) not null,
+HpcDescription varchar(500) not null,
+IsActive bit not null,
+CreateUser varchar(50) not null,
+CreateDate datetime not null,
+ModifyUser varchar(50) not null,
+ModifyDate datetime not null
+)
+
+ALTER TABLE Insurance.DimHpc
+ADD CONSTRAINT PK_HpcKey PRIMARY KEY NONCLUSTERED (HpcKey) NOT ENFORCED;
+
+
+
+if object_id (N'Insurance.DimCarrier',N'U') is not null
+drop table Insurance.DimCarrier
+CREATE TABLE Insurance.DimCarrier
+(
+[CarrierKey] int not null,
+[CarrierId] [int] NULL,
+[CarrierName] [varchar](100) NULL,
+[IsActive] [int] NULL,
+[IsContracted] [int] NULL,
+[IsDiscountProgram] [int] NULL,
+[MemberDataFileProvided] [int] NULL,
+[IsAutoSendPaymentReceipt] [int] NULL,
+[IsNHDiscount] [int] NULL,
+[AllowAdditionalServices] [int] NULL,
+CreateUser varchar(50) not null,
+CreateDate datetime not null,
+ModifyUser varchar(50) not null,
+ModifyDate datetime not null
+)
+
+ALTER TABLE Insurance.DimCarrier
+ADD CONSTRAINT PK_CarrierKey PRIMARY KEY NONCLUSTERED (CarrierKey) NOT ENFORCED;
+
+
+
+if object_id (N'Insurance.DimPlan',N'U') is not null
+drop table Insurance.DimPlan
+CREATE TABLE Insurance.DimPlan
+(
+[PlanKey] int not null,
+[CarrierKey] [int] NULL,
+[PlanId] [int] NULL,
+ParentPlanId [int] NULL,
+[PlanName] [varchar](100) NULL,
+[PlanNumber] [varchar](100) NULL,
+[IsDiscountProgram] [int] NULL,
+[IsMedicaid] [int] NULL,
+[IsMedicare] [int] NULL,
+[IsProgramCode] [int] NULL,
+[IsActive] [int] NULL,
+PlanStartDate date null,
+PlanEndDate date null,
+CreateUser varchar(50) not null,
+CreateDate datetime not null,
+ModifyUser varchar(50) not null,
+ModifyDate datetime not null
+)
+
+ALTER TABLE Insurance.DimPlan
+ADD CONSTRAINT PK_PlanKey PRIMARY KEY NONCLUSTERED (PlanKey) NOT ENFORCED;
+
+
+
+if object_id (N'Insurance.FactPlanBenefit',N'U') is not null
+drop table Insurance.FactPlanBenefit
+CREATE TABLE Insurance.FactPlanBenefit
+(
+[PlanBenefitKey] int not null,
+[PlanKey] int not NULL,
+[CarrierKey] int not NULL,
+[BenefitRuleKey] int not NULL,
+[ContractRuleKey] int not NULL,
+[HpcKey] int not NULL,
+[HpcEffectiveFrom] [datetime] NULL,
+[HpcEffectiveTo] [datetime] NULL,
+[ContractRuleEffectiveFrom] [datetime] NULL,
+[ContractRuleEffectiveTo] [datetime] NULL,
+[CreateUser] varchar(50) not null,
+[CreateDate] datetime not null,
+[ModifyUser] varchar(50) not null,
+[ModifyDate] datetime not null
+
+)
+
+
+ALTER TABLE Insurance.FactPlanBenefit
+ADD CONSTRAINT PK_Fact_PB_PlanBenefitKey PRIMARY KEY NONCLUSTERED (PlanBenefitKey) NOT ENFORCED;
+
+------------- Robert ----------
+
+
+if object_id (N'Eligibility.DimMember',N'U') is not null
+drop table Eligibility.DimMember
+CREATE TABLE Eligibility.DimMember
+(
+MemberKey int not null,
+[MemberId] [bigint] NULL,
+[NHMemberId] [varchar](50) NULL,
+[EligibleFileId] [bigint] NULL,
+[NHLinkId] [varchar](25) NULL,
+[FirstName] [varchar](100) NULL,
+[MiddleInitial] [varchar](100) NULL,
+[LastName] [varchar](100) NULL,
+[BirthDate] [date] NULL,
+[Gender] [varchar](10) NULL,
+[SocialSecurityNumber] [int] NULL,
+[SocialSecurityLast4Number] [int] NULL,
+DataSource varchar(50) null,
+[CreateUser] varchar(50) not null,
+[CreateDate] datetime not null,
+[ModifyUser] varchar(50) not null,
+[ModifyDate] datetime not null
+--select MemberInsuranceID,InsuranceNbr,MedicaidNbr,MedicareNbr from master.MemberInsuranceDetails
+) 
+
+
+if object_id (N'Eligibility.DimMemberAddressType',N'U') is not null
+drop table Eligibility.DimMemberAddressType
+create table Eligibility.DimMemberAddressType
+(
+MemberAddressTypeKey int not null,
+MemberAddressTypeCode [varchar](200) NULL,
+MemberAddressTypeDescription [varchar](200) NULL,
+[CreateUser] varchar(50) not null,
+[CreateDate] datetime not null,
+[ModifyUser] varchar(50) not null,
+[ModifyDate] datetime not null
+)
+
+if object_id (N'Eligibility.DimMemberAddress',N'U') is not null
+drop table Eligibility.DimMemberAddress
+create table Eligibility.DimMemberAddress
+( 
+  MemberAddressKey INT not null
+, MemberKey int not null
+, MemberAddressTypeKey INT not null
+, AddressId INT not null
+, Address1 VARCHAR(100)
+, Address2 VARCHAR(100)
+, City VARCHAR(100)
+, State VARCHAR(100)
+, ZipCode VARCHAR(10)
+, County VARCHAR(100)
+, Country VARCHAR(100)
+, IsActive INT
+, IsPreferredAddress INT
+, EffectiveStartDate datetime
+, EffectiveEndDate datetime
+, [CreateUser] varchar(50) not null
+, [CreateDate] datetime not null
+, [ModifyUser] varchar(50) not null
+, [ModifyDate] datetime not null
+)
+
+if object_id (N'Eligibility.DimMemberEmailType',N'U') is not null
+drop table Eligibility.DimMemberEmailType
+create table Eligibility.DimMemberEmailType
+( 
+  MemberEmailTypeKey INT not null
+, MemberEmailTypeCode VARCHAR(100)
+, MemberEmailTypeDescription VARCHAR(100)
+, IsActive INT
+, [CreateUser] varchar(50) not null
+, [CreateDate] datetime not null
+, [ModifyUser] varchar(50) not null
+, [ModifyDate] datetime not null
+)
+
+if object_id (N'Eligibility.DimMemberEmail',N'U') is not null
+drop table Eligibility.DimMemberEmail
+create table Eligibility.DimMemberEmail
+( 
+  MemberEmailKey BIGINT not null
+, MemberKey BIGINT not null
+, MemberEmailTypeKey INT not null
+, EmailId BIGINT not null
+, EmailAddress VARCHAR(100)
+, EmailSignature VARCHAR(100)
+, EmailTitle VARCHAR(100)
+, IsActive INT
+, IsEnabled INT
+, IsPreferredEmailType INT
+, IsVerified INT
+, EffectiveStartDate datetime
+, EffectiveEndDate datetime
+, [CreateUser] varchar(50) not null
+, [CreateDate] datetime not null
+, [ModifyUser] varchar(50) not null
+, [ModifyDate] datetime not null
+)
+
+if object_id (N'Eligibility.DimMemberPhoneType',N'U') is not null
+drop table Eligibility.DimMemberPhoneType
+create table Eligibility.DimMemberPhoneType
+( 
+  MemberPhoneTypeKey INT not null
+, MemberPhoneTypeCode VARCHAR(100)
+, MemberPhoneTypeDescription VARCHAR(100)
+, IsActive INT
+, [CreateUser] varchar(50) not null
+, [CreateDate] datetime not null
+, [ModifyUser] varchar(50) not null
+, [ModifyDate] datetime not null
+)
+
+if object_id (N'Eligibility.DimMemberPhone',N'U') is not null
+drop table Eligibility.DimMemberPhone
+create table Eligibility.DimMemberPhone
+( 
+  MemberPhoneKey INT not null
+, MemberKey BIGINT not null
+, MemberPhoneTypeKey INT not null
+, PhoneId INT not null
+, PhoneNumber VARCHAR(100)
+, PhoneExtension VARCHAR(100)
+, CountryCode VARCHAR(100)
+, IsActive INT
+, IsPreferredPhoneNumber INT
+, IsDeleted INT
+, EffectiveStartDate datetime
+, EffectiveEndDate datetime
+, [CreateUser] varchar(50) not null
+, [CreateDate] datetime not null
+, [ModifyUser] varchar(50) not null
+, [ModifyDate] datetime not null
+)
+
+
+
+ALTER TABLE Eligibility.DimMember
+ADD CONSTRAINT pk_DimMember_MemberKey PRIMARY KEY NONCLUSTERED (MemberKey) NOT ENFORCED;
+
+ALTER TABLE Eligibility.DimMemberAddress
+ADD CONSTRAINT pk_DimMemberAddress_MemberAddressKey PRIMARY KEY NONCLUSTERED (MemberAddressKey) NOT ENFORCED;
+
+ALTER TABLE Eligibility.DimMemberAddressType
+ADD CONSTRAINT pk_DimMemberAddressType_MemberAddressTypeKey PRIMARY KEY NONCLUSTERED (MemberAddressTypeKey) NOT ENFORCED;
+
+ALTER TABLE Eligibility.DimMemberEmail
+ADD CONSTRAINT pk_DimMemberEmail_MemberEmailKey PRIMARY KEY NONCLUSTERED (MemberEmailKey) NOT ENFORCED;
+
+ALTER TABLE Eligibility.DimMemberEmailType
+ADD CONSTRAINT pk_DimMemberEmail_MemberEmailTypeKey PRIMARY KEY NONCLUSTERED (MemberEmailTypeKey) NOT ENFORCED;
+
+ALTER TABLE Eligibility.DimMemberPhoneType
+ADD CONSTRAINT pk_DimMemberPhoneType_MemberPhoneTypeKey PRIMARY KEY NONCLUSTERED (MemberPhoneTypeKey) NOT ENFORCED;
+
+ALTER TABLE Eligibility.DimMemberPhone
+ADD CONSTRAINT pk_DimMemberPhone_MemberPhoneKey PRIMARY KEY NONCLUSTERED (MemberPhoneKey) NOT ENFORCED;
+
+--exec sp_rename 'Eligibility.DimMemberEmail.EmailKey', 'MemberEmailKey', 'column';
+
+
+if object_id (N'Eligibility.FactMemberEligibility',N'U') is not null
+drop table Eligibility.FactMemberEligibility
+CREATE TABLE Eligibility.FactMemberEligibility
+(
+MemberEligibilityKey int identity(1,1) not null,
+[MemberKey] int not NULL,
+[CarrierKey] int not NULL,
+[PlanKey] int not NULL,
+[EffectiveStartDate] [datetime] NULL,
+[EffectiveEndDate] [datetime] NULL,
+[CarrierType] [varchar](100) NULL,
+[GroupNumber] [varchar](50) NULL, --GroupNbr
+[IVQStatus] [varchar](50) NULL,
+[InsuranceVerificationDate] [datetime] NULL,
+[IsActive] [int] NULL,
+[CreateUser] varchar(50) not null,
+[CreateDate] datetime not null,
+[ModifyUser] varchar(50) not null,
+[ModifyDate] datetime not null
+)
+
+-----------------------------------------------
+if object_id (N'Order.DimAmountData',N'U') is not null
+CREATE TABLE [Order].[DimAmountData]
+(
+	[OrderAmountDataKey] [bigint] NOT NULL,
+	[OrderKey] [bigint] NOT NULL,
+	[ProductPrice] [decimal](10, 2) NULL,
+	[OriginalPrice] [decimal](10, 2) NULL,
+	[InsuranceBenefit] [decimal](10, 2) NULL,
+	[BenefitUsed] [decimal](10, 2) NULL,
+	[BenefitAvailable] [decimal](10, 2) NULL,
+	[MedicaidBenefit] [decimal](10, 2) NULL,
+	[Adjustments] [decimal](10, 2) NULL,
+	[AdjustmentComments] [nvarchar](1000) NULL,
+	[AdjustmentApprover] [varchar](50) NULL,
+	[AdjustmentReason] [nvarchar](1000) NULL,
+	[AppliedCredit] [decimal](10, 2) NULL,
+	[MemberResponsibility] [decimal](10, 2) NULL,
+	[UnitPrice] [decimal](10, 2) NULL,
+	[PairPrice] [decimal](10, 2) NULL,
+	[ForwardCredits] [decimal](10, 2) NULL,
+	[RefundDetails] [decimal](10, 2) NULL,
+	[CreateUser] [varchar](50) NOT NULL,
+	[CreateDate] [datetime] NOT NULL,
+	[ModifyUser] [varchar](50) NOT NULL,
+	[ModifyDate] [datetime] NULL
+ ) 
+
+
+if object_id (N'Order.DimShippingData',N'U') is not null
+CREATE TABLE [Order].[DimShippingData]
+(
+	[OrderShippingDataKey] [bigint] NOT NULL,
+	[OrderKey] [bigint] NOT NULL,
+	[ProviderBusinessName] [varchar](100) NULL,
+	[AccountNumber] [varchar](50) NULL,
+	[FirstName] [varchar](100) NULL,
+	[LastName] [varchar](100) NULL,
+	[Address] [varchar](100) NULL,
+	[Address1] [varchar](100) NULL,
+	[Address2] [varchar](100) NULL,
+	[City] [varchar](100) NULL,
+	[State] [varchar](2) NULL,
+	[Zip] [varchar](10) NULL,
+	[Country] [varchar](20) NULL,
+	[County] [varchar](20) NULL,
+	[Email] [varchar](50) NULL,
+	[PhoneNumber] [varchar](15) NULL,
+	[ShippingInstructions] [varchar](100) NULL,
+	[Manufacturer] [varchar](100) NULL,
+	[FaxNumber] [varchar](20) NULL,
+	[Dba] [varchar](20) NULL,
+	[Dispenser] [varchar](100) NULL,
+	[CreateUser] [varchar](50) NOT NULL,
+	[CreateDate] [datetime] NOT NULL,
+	[ModifyUser] [varchar](50) NOT NULL,
+	[ModifyDate] [datetime] NOT NULL
+)
+
+if object_id (N'Order.DimProviderData',N'U') is not null
+CREATE TABLE [Order].[DimProviderData]
+	(
+	[OrderProviderDataKey] [bigint] NOT NULL,
+	[OrderKey] [bigint] NOT NULL,
+	[ProviderId] [int] NULL,
+	[ProviderLeagalBusinessName] [varchar](100) NULL,
+	[AccountNumber] [varchar](50) NULL,
+	[FirstName] [varchar](100) NULL,
+	[LastName] [varchar](100) NULL,
+	[Address] [varchar](100) NULL,
+	[Address1] [varchar](100) NULL,
+	[Address2] [varchar](100) NULL,
+	[City] [varchar](100) NULL,
+	[State] [varchar](2) NULL,
+	[Zip] [varchar](10) NULL,
+	[Country] [varchar](20) NULL,
+	[County] [varchar](20) NULL,
+	[PhoneNumber] [varchar](15) NULL,
+	[FaxNumber] [varchar](15) NULL,
+	[EmailId] [varchar](50) NULL,
+	[LocationId] [varchar](50) NULL,
+	[HcpId] [varchar](50) NULL,
+	[Hcp] [varchar](50) NULL,
+	[NpiNumber] [varchar](50) NULL,
+	[Manufacturer] [varchar](100) NULL,
+	[Dba] [varchar](20) NULL,
+	[Dispenser] [varchar](100) NULL,
+	[CreateUser] [varchar](50) NOT NULL,
+	[CreateDate] [datetime] NOT NULL,
+	[ModifyUser] [varchar](50) NOT NULL,
+	[ModifyDate] [datetime] NOT NULL
+	)
+
+if object_id (N'Order.DimBenefitData',N'U') is not null
+CREATE TABLE [Order].[DimBenefitData]
+	(
+	[OrderBenefitDataKey] [bigint] NOT NULL,
+	[OrderKey] [bigint] NOT NULL,
+	[AppliedBenefits] [decimal](10, 2) NULL,
+	[EligibleBenefits] [decimal](10, 2) NULL,
+	[UsedBenefits] [decimal](10, 2) NULL,
+	[AvailableBenefits] [decimal](10, 2) NULL,
+	[RemainingBenefits] [decimal](10, 2) NULL,
+	[BenefitAppliedAmount] [decimal](10, 2) NULL,
+	[OutOfPocket] [decimal](10, 2) NULL,
+	[Bencat] [varchar](20) NULL,
+	[TechnologyLevel] [varchar](20) NULL,
+	[BenforType] [varchar](20) NULL,
+	[TerminationDate] [datetime] NULL,
+	[BenFreqType] [varchar](20) NULL,
+	[BenEffectiveFrom] [datetime] NULL,
+	[BenEffectiveTo] [datetime] NULL,
+	[CreateUser] [varchar](50) NOT NULL,
+	[CreateDate] [datetime] NOT NULL,
+	[ModifyUser] [varchar](50) NOT NULL,
+	[ModifyDate] [datetime] NOT NULL
+	)
+
+if object_id (N'Order.DimType',N'U') is not null
+CREATE TABLE [Order].[DimType]
+	(
+	[OrderTypeKey] [bigint] NOT NULL,
+	[OrderKey] [bigint] NOT NULL,
+	[Category] [varchar](10) NOT NULL,
+	[OrderType] [varchar](50) NOT NULL,
+	[CreateUser] [varchar](50) NOT NULL,
+	[CreateDate] [datetime] NOT NULL,
+	[ModifyUser] [varchar](50) NOT NULL,
+	[ModifyDate] [datetime] NOT NULL
+	)
+
+if object_id (N'Order.DimSource',N'U') is not null
+CREATE TABLE [Order].[DimSource]
+	(
+	[OrderSourceKey] [bigint] NOT NULL,
+	[OrderKey] [bigint] NOT NULL,
+	[OrderSource] [varchar](20) NOT NULL,
+	[CreateUser] [varchar](50) NOT NULL,
+	[CreateDate] [datetime] NOT NULL,
+	[ModifyUser] [varchar](50) NOT NULL,
+	[ModifyDate] [datetime] NOT NULL
+	)
+
+if object_id (N'Order.DimStatus',N'U') is not null
+CREATE TABLE [Order].[DimStatus]
+(
+----Dim Order Status
+[OrderStatusKey] BIGINT NOT NULL
+,[OrderKey] BIGINT NOT NULL
+,[OrderStatus] VARCHAR(20) NOT NULL
+,[CreateUser] VARCHAR(50) NOT NULL
+,[CreateDate] DATETIME NOT NULL
+,[ModifyUser] VARCHAR(50) NOT NULL
+,[ModifyDate] DATETIME NOT NULL
+
+--select top 10 'Orders',[status] from orders.Orders
+--union
+--select top 10 'Suppl',[status] from SupplOrders.Orders
+)
+
+
+ALTER TABLE [Order].[DimStatus]
+ADD CONSTRAINT pk_DimStatus_OrderStatusKey PRIMARY KEY NONCLUSTERED (OrderStatusKey) NOT ENFORCED;
+
+----Sara
+if object_id (N'Order.DimStatusCode',N'U') is not null
+CREATE TABLE [Order].[DimStatusCode]
+	(
+	[OrderStatusCodeKey] [bigint] NOT NULL,
+	[OrderKey] [bigint] NOT NULL,
+	[OrderStatusCode] [nvarchar](3) NOT NULL,
+	[CreateUser] [varchar](50) NOT NULL,
+	[CreateDate] [datetime] NOT NULL,
+	[ModifyUser] [varchar](50) NOT NULL,
+	[ModifyDate] [datetime] NOT NULL
+	)
+
+
+ALTER TABLE [Order].[DimStatusCode]
+ADD CONSTRAINT pk_DimStatusCode_OrderStatusCodeKey PRIMARY KEY NONCLUSTERED (OrderStatusCodeKey) NOT ENFORCED;
+
+if object_id (N'Order.DimItemType',N'U') is not null
+CREATE TABLE [Order].[DimItemType]
+(
+	[OrderItemTypeKey] [bigint] NOT NULL,
+	[OrderKey] [bigint] NOT NULL,
+	[OrderItemKey] [bigint] NOT NULL,
+	[OrderItemType] [varchar](10) NOT NULL,
+	[CreateUser] [varchar](50) NOT NULL,
+	[CreateDate] [datetime] NOT NULL,
+	[ModifyUser] [varchar](50) NOT NULL,
+	[ModifyDate] [datetime] NOT NULL
+)
+
+
+
+if object_id (N'Order.DimItemData',N'U') is not null
+CREATE TABLE [Order].[DimItemData]
+(
+	[OrderItemDataKey] [bigint] NOT NULL,
+	[OrderKey] [bigint] NOT NULL,
+	[Quantity] [decimal](10, 2) NULL,
+	[MeasuredIn] [varchar](10) NULL,
+	[NationsId] [int] NULL,
+	[Categories] [varchar](50) NULL,
+	[CatalogName] [varchar](50) NULL,
+	[CatalogColorCode] [varchar](50) NULL,
+	[TrackingNumber] [varchar](50) NULL,
+	[Remarks] [varchar](100) NULL,
+	[ResApprovedCount] [int] NULL
+)
+
+--if object_id (N'Order.DimTransactionData',N'U') is not null
+--CREATE TABLE [Order].[DimTransactionData]
+--(
+----Dim Order Transaction Data
+----extract the json into a dim table
+--select top 10 ordertransactiondata from orders.OrderTransactionDetails
+--)
+
+
+
+if object_id (N'Order.FactOrder',N'U') is not null
+CREATE TABLE [Order].[FactOrder]
+(
+	[OrderKey] [bigint] not NULL,
+	[MemberKey] [bigint] not NULL,
+	[CarrierKey] [int] not NULL,
+	[PlanKey] [int] not NULL,
+	[OrderTypeKey] [int] not NULL,
+	[OrderStatusKey] [int] not NULL,
+	[OrderStatusCodeKey] [int] not NULL,
+	[OrderSourceKey] [int] not NULL,
+	--OrderAddressKey bigint not null,
+	OrderAmountKey bigint not null,
+	OrderShippingKey bigint not null,
+	OrderProviderKey bigint not null,
+	OrderBenefitKey bigint not null,
+	OrderId bigint not null,
+	MemberChartDataId bigint not null,
+	[OrderInitiatedDate] [datetime] NULL,
+	[OrderReceivedDate] [datetime] NULL,
+	OrderAmount [decimal](20, 2) NULL,
+	RefOrderId bigint null,
+	SpecialInstruction varchar(2000) null,
+	EarMoldInstruction varchar(2000) null,
+	IsActive bit not null,
+	OrderBy varchar(100) null,
+	IpAddress varchar(100) null,
+	[CreateUser] varchar(50) not null,
+	[CreateDate] datetime not null,
+	[ModifyUser] varchar(50) not null,
+	[ModifyDate] datetime not null
+)
+--select * from orders.Orders
+--union
+--select * from SupplOrders.Orders 
+
+
+
+
+
+if object_id (N'Order.FactOrderItem',N'U') is not null
+CREATE TABLE [Order].[FactOrderItem]
+(
+[OrderItemKey] bigint null,
+OrderKey bigint not null,
+OrderItemTypeKey bigint not null,
+OrderStatusKey bigint not null, 
+OrderItemDataKey bigint not null,
+OrderId bigint not null,
+Modifier varchar(10) null, --same as source 
+ItemCode varchar(2000) null,
+OrderQuantity int,
+OrderAmount decimal (10,2) null,
+OrderPreviousAmount decimal (10,2) null,
+OrderUnitPrice decimal (10,2) null,
+OrderPairPrice decimal (10,2) null,
+PONumber bigint null, 
+InvoiceNumber varchar(200) null,
+IsActive bit not null,
+[CreateUser] varchar(50) not null,
+[CreateDate] datetime not null,
+[ModifyUser] varchar(50) not null,
+[ModifyDate] datetime not null
+)
+--select * from orders.OrderItems
+--union
+--select * from SupplOrders.OrderItems 
+
+
+if object_id (N'Order.FactOrderTransaction',N'U') is not null
+CREATE TABLE [Order].[FactOrderTransaction]
+(
+	[OrderTransacionKey] [bigint] NULL,
+	[OrderKey] [bigint] NOT NULL,
+	[OrderStatsKey] [bigint] NOT NULL,
+	[OrderTransactionDataKey] [bigint] NOT NULL,
+	[IsComplete] [bit] NOT NULL,
+	[IsActive] [bit] NOT NULL,
+	[CreateUser] [varchar](50) NOT NULL,
+	[CreateDate] [datetime] NOT NULL,
+	[ModifyUser] [varchar](50) NOT NULL,
+	[ModifyDate] [datetime] NOT NULL
+)
+--select top 10 * from orders.OrderTransactionDetails
+--union
+--select top 10 * from [SupplOrders].[OrdersHistory]
+
+---- locations and providers make sure to add distinct of them from all different tables 
+--from provider.ProviderProfiles pp
+--left join provider.ProviderLocations pl on pl.ProviderId = pp.ProviderId
+--left join provider.Locations l on l.LocationId = pl.LocationId
+--left join provider.ProviderUserLocations pul on pul.ProviderId = pp.ProviderId
+--left join auth.UserProfiles up on up.UserProfileId = pul.UserProfileId
+--left join provider.HCPProviderProfile hcp on hcp.UserProfileId = up.UserProfileId
+
+if object_id (N'Provider.DimProvider',N'U') is not null
+CREATE TABLE [Provider].[DimProvider]
+(
+ProviderKey bigint not null,
+ProviderDetailKey bigint not null,
+PracticeTypeKey bigint not null,  --select * from provider.PracticeTypes
+Brands varchar(2000) null,
+DBA varchar(2000) null,
+NPINumber varchar(2000) null,
+NationHearingAccountNumber varchar(2000) null,
+PrimaryEmailAddress varchar(2000) null,
+ProviderName  varchar(2000) null,
+SiteId varchar(2000) null,
+TaxId varchar(2000) null,
+ProviderCode varchar(2000) null,
+[CreateUser] varchar(50) not null,
+[CreateDate] datetime not null,
+[ModifyUser] varchar(50) not null,
+[ModifyDate] datetime not null
+)
+--select * from provider.ProviderProfiles
+
+
+if object_id (N'Provider.DimLocation',N'U') is not null
+CREATE TABLE [Provider].[DimLocation]
+(
+	[LocationKey] [int] NOT NULL,
+	[LocationId] [bigint] NULL,
+	[BusinessName] [varchar](100) NULL,
+	[Address] [varchar](100) NULL,
+	[City] [varchar](100) NULL,
+	[State] [varchar](25) NULL,
+	[Zip] [varchar](25) NULL,
+	[County] [varchar](100) NULL,
+	[EmailAddress] [varchar](100) NULL,
+	[LocationTypeId] [bigint] NULL,
+	[LocationType] [varchar](100) NULL,
+	[TaxId] [varchar](50) NULL,
+	[NPINumber] [bigint] NULL,
+	[SecondaryOfficeId] [bigint] NULL,
+	[PrimaryOfficeId] [bigint] NULL,
+	[IsActive] [int] NULL,
+	[IsVerified] [int] NULL,
+	[IsWheelChair] [int] NULL,
+	[IsMedicaid] [int] NULL,
+	[ActiveDate] [datetime] NULL,
+	[InActiveDate] [datetime] NULL,
+	[InActiveReason] [varchar](200) NULL,
+	[IsMedicare] [int] NULL,
+	[IsCredentialsMet] [int] NULL,
+	[IsMobileLocation] [int] NULL,
+	[IsHandicapSpecialNeedsAccess] [int] NULL,
+	[IsPediatricServices] [int] NULL,
+	[IsPublicTransport] [int] NULL,
+	[IsADAComplauints] [int] NULL,
+	[IsAcceptNewPatients] [int] NULL
+)
+--select * from provider.Locations
+
+
+if object_id (N'Provider.DimHCP',N'U') is not null
+CREATE TABLE [Provider].[DimHCP]
+(
+	[HCPKey] [bigint] NOT NULL,
+	[HCPId] [bigint] NULL,
+	[NPINumber] [varchar](100) NULL,
+	[TaxId] [varchar](100) NULL,
+	[NHNPI] [varchar](100) NULL,
+	[CAQHId] [varchar](100) NULL,
+	[FirstName] [varchar](100) NULL,
+	[LastName] [varchar](100) NULL,
+	[SoleProprietorFlag] [varchar](100) NULL,
+	[Gender] [varchar](10) NULL,
+	[EnumerationDate] [datetime] NULL,
+	[LastUpdatedDate] [datetime] NULL,
+	[IsActive] [int] NULL,
+	[CertificationDate] [datetime] NULL,
+	[LocationAddress] [varchar](100) NULL,
+	[LocationCity] [varchar](100) NULL,
+	[LocationState] [varchar](25) NULL,
+	[LocationZipCode] [varchar](50) NULL,
+	[LocationCountryCode] [varchar](100) NULL,
+	[LocationCountryName] [varchar](25) NULL,
+	[LocationPhoneNumber] [varchar](50) NULL,
+	[LocationFaxNumber] [varchar](200) NULL,
+	[MailingAddress] [varchar](200) NULL,
+	[MailingCity] [varchar](200) NULL,
+	[MailingState] [varchar](200) NULL,
+	[MailingZipCode] [varchar](100) NULL,
+	[MailingCountryCode] [varchar](50) NULL,
+	[MailingCountryName] [varchar](50) NULL,
+	[MailingPhoneNumber] [varchar](50) NULL,
+	[MailingFaxNumber] [varchar](50) NULL
+)
+
+--CREATE TABLE [Provider].[DimHCP]
+--(
+--select top 10 * from provider.HCPProviderProfile 
+--)
+
+
+if object_id (N'Provider.FactProviderNetwork',N'U') is not null
+CREATE TABLE [Provider].[FactProviderNetwork]
+(
+	[ProviderNetworkKey] [bigint] NOT NULL,
+	[ProivderId] [bigint] NOT NULL,
+	[ProviderEmail] [varchar](100) NOT NULL,
+	[ProviderName] [nvarchar](100) NOT NULL,
+	[IsActive] [bit] NOT NULL,
+	[LocationId] [bigint] NOT NULL,
+	[BusinessName] [varchar](100) NOT NULL,
+	[EmailAddress] [varchar](100) NOT NULL,
+	[Address] [varchar](100) NOT NULL,
+	[City] [varchar](100) NOT NULL,
+	[State] [varchar](25) NOT NULL,
+	[Zip] [varchar](25) NOT NULL,
+	[NPINumber] [bigint] NOT NULL,
+	[UserProfileId] [bigint] NOT NULL,
+	[Designation] [nvarchar](500) NOT NULL,
+	[FirstName] [nvarchar](50) NOT NULL,
+	[LastName] [nvarchar](50) NOT NULL,
+	[IsRegistered] [bit] NOT NULL,
+	[TemproryKeyCode] [nvarchar](30) NOT NULL,
+	[UserName] [nvarchar](30) NOT NULL,
+	[ProviderCode] [varchar](20) NOT NULL,
+	[UserEmail] [varchar](100) NOT NULL,
+	[HCPId] [bigint] NOT NULL,
+	[HCPNPINumber] [varchar](100) NOT NULL,
+	[Title] [nvarchar](100) NOT NULL
+)
+--CREATE TABLE [Provider].[FactProviderNetwork]
+--(
+--select top 10 * from DimLocation
+--select top 10 * from DimProvider
+--select top 10 * from DimHCP
+--****select * from provider.ProviderUsers
+--****select * form provider.ProviderUserLocations
+--**** make sure isactive = 1
+--)
+
+
+IF OBJECT_ID(N'Auth.DimUser', N'U') IS NOT NULL
+	DROP TABLE [Auth].[DimUser]
+CREATE TABLE [Auth].[DimUser]
+(
+	UserKey bigint NOT NULL,
+	UserID bigint NOT NULL,
+	UserName nvarchar(150),
+	FirstName nvarchar(50),
+	MiddleName nvarchar(50),
+	LastName nvarchar(50),
+	PrimaryEmail varchar(50),
+	PrimaryPhoneNumber varchar(30),
+	LastLoginDate datetime2,
+	ProviderCode varchar(50),
+	IsBlocked bit,
+	IsEnabled bit,
+	IsVerified bit,
+	IsActive bit,
+	CreateDate datetime2,
+	ModifyDate datetime2,
+	ModifyUser nvarchar(150)
+);
+
+
+
+--if object_id (N'Order.FactClaim',N'U') is not null
+--CREATE TABLE [Order].[FactClaim]
+--(
+--ClaimKey,
+--ClaimId,
+--CarrierKey,
+--*** member addreess needs to stay as is
+--*** ItemID = ItemCode from catalog.Itemmasterlist table
+--*** HCPNPINUmber = DimHCP NPINumber
+--*** OrganizationNPINumber = ProviderNPINumber from DimProvider
+--*** Status = CLaimStatus from DimClaimStatus
+--*** ClaimStatus = PortalClaimStatus from DimClaimStatus
+--*** Planid = PlanKey from dimplan
+--*** OrderID = OrderKey from FactOrder
+--*** InvoiceId = InvoiceKey from FactInvoice
+--IsActive
+--CreateDate	
+--CreateUser
+--ModifyDate	
+--ModifyUser
+--)
+--select top 10 * from [Claims].[ClaimFiles]
+
+
+--if object_id (N'Order.FactInvoice',N'U') is not null
+--CREATE TABLE [Order].[FactInvoice]
+--(
+--InvoiceKey
+--OrderKey
+--InvoiceId	
+--Source	
+--SourceId	
+--VendorType	
+--PONumber	
+--InvoiceNumber	
+--InvoiceDate	
+--InvoiceDueDate	
+--InvoiceAmount
+--PaymentData --keep as null but check if new data coming in and if so then report 
+--BatchId
+--Remarks
+--IsDocsSubmitted
+--PaymentMethod
+--VendorAccountId
+--VendorRefId
+--InvoiceType 
+--InvoiceSentDate
+--MemberChartId
+--IsActive
+--CreateUser
+--CreateDate
+--ModifyUser
+--ModifyDate
+--*** vendortype = 'clm'
+--)
+--select top 10 * from [accounts].[Invoices]
+
+
+
+--if object_id (N'Order.FactInvoicesDetail',N'U') is not null
+--CREATE TABLE [Order].[FactInvoicesDetail]
+--(
+--InvoiceItemKey
+--InvoiceKey
+--InvoiceItemId	
+--ItemCode	
+--ItemDescription	
+--Modifier	
+--Quantity	
+--Cost		
+--MemberChartDataId	
+--Remarks	
+--IsActive
+--CreateUser	
+--CreateDate	
+--ModifyUser	
+--ModifyDate	
+--)
+--select top 10 * from [accounts].[InvoiceItems]
+
+
+if object_id (N'Provider.FactAppointment',N'U') is not null
+CREATE TABLE [Provider].[FactAppointment]
+(
+	[MemberAppointmentKey] [bigint] NOT NULL,
+	[MemberAppointmentId] [bigint] NOT NULL,
+	[AccompaniedBy] [nvarchar](50) NULL,
+	[AppointmentScheduleId] [bigint] NOT NULL,
+	[AppointmentStatus] [nvarchar](50) NULL,
+	[AppointmentTypeId] [bigint] NOT NULL,
+	[Confirmed] [bit] NOT NULL,
+	[CreateDate] [datetime2](7) NOT NULL,
+	[CreateUser] [nvarchar](150) NULL,
+	[EmailAddress] [nvarchar](100) NULL,
+	[EmailReminder] [bit] NOT NULL,
+	[IsActive] [bit] NOT NULL,
+	[IsItOverlap] [bit] NOT NULL,
+	[LocationId] [bigint] NOT NULL,
+	[MemberProfileId] [bigint] NOT NULL,
+	[MobileNumber] [nvarchar](20) NULL,
+	[ModifyDate] [datetime2](7) NULL,
+	[ModifyUser] [nvarchar](150) NULL,
+	[ProviderId] [bigint] NOT NULL,
+	[Relationship] [nvarchar](50) NULL,
+	[SmsReminder] [bit] NOT NULL,
+	[UserProfileId] [bigint] NOT NULL,
+	[StartDate] [datetime2](7) NULL,
+	[StartTime] [datetime2](7) NULL,
+	[EndDate] [datetime2](7) NULL,
+	[EndTime] [datetime2](7) NULL,
+	[MemberChartDataId] [bigint] NOT NULL,
+	[WalkIn] [bit] NOT NULL,
+	[MissingDate] [bit] NOT NULL,
+	[IsVerified] [bit] NOT NULL,
+	[CancelReason] [varchar](100) NULL
+)
+
+--if object_id (N'Provider.FactAppointmentType',N'U') is not null
+--CREATE TABLE [Provider].[FactAppointmentType]
+--(
+--AppointmentTypeKey
+--AppointmentTypeId	
+--AppointmentTypeName	
+--IconImage	
+--IsActive	
+--ColorCode	
+--CreateDate	
+--CreateUser	
+--ModifyDate	
+--ModifyUser
+--)
+--select top 10 * from provider.AppointmentTypes order by 1 desc
+
+
+--benefit metrics
+if object_id (N'BenefitMatrix.DimPresetType',N'U') is not null
+CREATE TABLE [BenefitMatrix].[DimPreset]
+(
+PresetTypeKey bigint not null,
+PresetTypeCode varchar(20) not null,
+PresetTypeName varchar(50) not null
+)
+-- select top 100 * from benefits.Presets where parentpresetid is not null
+
+
+
+if object_id (N'BenefitMatrix.DimPreset',N'U') is not null
+CREATE TABLE [BenefitMatrix].[DimPreset]
+(
+PresetKey bigint not null,
+PresetTypeKey bigint not null, --Pricetype
+UserKey bigint not null, --from Auth.DimUser
+PresetId bigint not null,
+PresetName varchar(500) null,
+PresetDescription varchar(500) null,	
+ReferencePresetId bigint null,
+IsActive bit not null,
+[CreateUser] varchar(50) not null,
+[CreateDate] datetime not null,
+[ModifyUser] varchar(50) not null,
+[ModifyDate] datetime not null
+)
+--DimPreset - select top 100 * from benefits.Presets where parentpresetid is not null
+
+
+if object_id (N'BenefitMatrix.FactPresetRevision',N'U') is not null
+CREATE TABLE [BenefitMatrix].[FactPresetRevision]
+(
+PresetRevisionKey bigint not null,
+PresetKey bigint not null,
+PresetRevisionId bigint not null,
+ItemCode varchar(100) not null,
+UnitPrice decimal(10,2) not null,
+PairPrice decimal(10,2) not null,
+IsIncluded bit not null,
+IsActive bit not null,
+[CreateUser] varchar(50) not null,
+[CreateDate] datetime not null,
+[ModifyUser] varchar(50) not null,
+[ModifyDate] datetime not null
+)
+--select top 10 * from [benefits].[COGSPresetRevisions]
+--union
+--select top 10 * from [benefits].[MemberPricePresetRevisions]
+--union
+--select top 10 * from [benefits].[DispensingFeePresetRevisions]
+--union
+--select top 10 * from [benefits].[TechnologyLevelPresetRevisions]
+
+
+--if object_id (N'BenefitMatrix.DimPriceType',N'U') is not null
+--CREATE TABLE [BenefitMatrix].[DimPriceType]
+--(
+
+--)
+--select pricetype, count(*) from benefits.MasterRevisions group by pricetype
+
+
+if object_id (N'BenefitMatrix.DimMasterRevisions',N'U') is not null
+CREATE TABLE [BenefitMatrix].[DimMasterRevisions]
+(
+MasterRevisionKey bigint not null,
+PriceTypeKey bigint not null,
+RevisionStatusKey  bigint not null,
+SubmitUserKey bigint not null, --from auth.dimuser
+ApproveUserKey bigint not null, --from auth.dimuser
+MasterRevisionId bigint not null,
+SubmitDate date not null, 
+ApproveDate date not null,
+ApproveComments varchar(500) null,
+EffectiveFrom date not null,
+EffectiveTo date not null,
+IsActive bit not null,
+[CreateUser] varchar(50) not null,
+[CreateDate] datetime not null,
+[ModifyUser] varchar(50) not null,
+[ModifyDate] datetime not null
+)
+--select * from benefits.MasterRevisions
+
+
+if object_id (N'BenefitMatrix.FactContractPriceRevision',N'U') is not null
+CREATE TABLE [BenefitMatrix].[FactContractPriceRevision]
+(
+ContractPriceKey bigint not null,
+MasterRevisionKey bigint not null,
+PresetTypeKey bigint not null,	
+ContractMasterPriceId bigint not null,
+ContractPriceRevisionId	bigint not null,
+ItemCode varchar(100) not null,
+HealthPlanContractId bigint not null,	
+EffectiveFrom date not null,
+EffectiveTo date not null,
+UnitPrice decimal(10,2) null, --if text is value if number price
+PairPrice decimal(10,2) null, --if text is value if number price
+UnitValue varchar(100) null, --if text is value if number price
+--StockStatus --check if needed	
+--RestockDate --check if needed
+IsIncluded bit not null,
+IsActive bit not null,
+[CreateUser] varchar(50) not null,
+[CreateDate] datetime not null,
+[ModifyUser] varchar(50) not null,
+[ModifyDate] datetime not null
+)
+--select * FROM benefits.ContractMasterPriceList 
+--WHERE 1=1
+--AND CM.PriceTypeCode= 'MEMB'
+--AND CM.IsIncluded = 1
+--and healthplancontractid = 4030
+--order by 3
+
+if object_id (N'BenefitMatrix.DimRevisionStatus',N'U') is not null
+CREATE TABLE [BenefitMatrix].[DimRevisionStatus]
+(
+RevisionStatusKey bigint not null,
+RevisionStatusName varchar not null,
+IsActive bit not null,
+[CreateUser] varchar(50) not null,
+[CreateDate] datetime not null,
+[ModifyUser] varchar(50) not null,
+[ModifyDate] datetime not null
+)
+--select top 10 * from [benefits].[RevisionStatusTypes]
+
+--Hr
+if object_id (N'Hr.DimLocation',N'U') is not null
+CREATE TABLE [Hr].[DimLocation]
+(
+LocationKey bigint not null,
+LocationId bigint not null,
+LocationCode varchar(10) not null,
+LocationName varchar(100) not null,
+LocationType varchar(100) not null,
+Address1 VARCHAR(100) not null,
+Address2 VARCHAR(100) null,
+City VARCHAR(100) not null,
+State VARCHAR(100) not null,
+ZipCode VARCHAR(10) not null,
+County VARCHAR(100) null,
+Country VARCHAR(100) not null
+)
+
+
+
+--contact center
+if object_id (N'ContactCenter.DimMEA',N'U') is not null
+CREATE TABLE [ContactCenter].[DimMEA]
+(
+MEAKey bigint not null,
+LocationKey varchar(50) not null, -- agent fulle name extract the location
+MEAId bigint not null,
+EmployeeId bigint not null,
+MEAFirstName varchar(100) not null,
+MEALastName varchar(100) not null,
+IsActive bit not null,
+[CreateUser] varchar(50) not null,
+[CreateDate] datetime not null,
+[ModifyUser] varchar(50) not null,
+[ModifyDate] datetime not null
+)
+--select top 100 * from [contactcenter].Mitel_DimAgent
+
+
+
+if object_id (N'ContactCenter.DimQueue',N'U') is not null
+CREATE TABLE [ContactCenter].[DimQue]
+(
+QueueKey bigint not null,
+QueueId bigint not null, --QueueDialable
+QueueCode varchar(20) not null, -- QueueReporting
+QueueName varchar(500) not null,
+QueueType varchar(500) not null,
+QueuePriority bigint not null,
+QueueShortAbandonTime bigint not null,
+QueueShortTalkTime bigint not null,
+QueueShortServiceTime bigint not null,
+QueueIsWrapHandleTime bigint not null,
+IsActive bit not null,
+[CreateUser] varchar(50) not null,
+[CreateDate] datetime not null,
+[ModifyUser] varchar(50) not null,
+[ModifyDate] datetime not null
+)
+--select top 100 * from [contactcenter].Mitel_DimQueue
+
+
+if object_id (N'ContactCenter.DimDNIS',N'U') is not null
+CREATE TABLE [ContactCenter].[DimDNIS]
+(
+DNISKey bigint not null,
+DNISId bigint not null,
+DNISNumber bigint not null, 
+DNISName varchar(500) not null,
+IsActive bit not null,
+[CreateUser] varchar(50) not null,
+[CreateDate] datetime not null,
+[ModifyUser] varchar(50) not null,
+[ModifyDate] datetime not null
+)
+
+
+if object_id (N'ContactCenter.FactDNISMapping',N'U') is not null
+CREATE TABLE [ContactCenter].[FactDNISMapping]
+(
+DNISKey bigint not null,
+CarrierKey bigint not null,
+PlanKey bigint not null,
+BenefitTypeKey bigint not null,
+EffectiveStartDate date,
+EffectiveEndDate date,
+IsActive bit not null,
+[CreateUser] varchar(50) not null,
+[CreateDate] datetime not null,
+[ModifyUser] varchar(50) not null,
+[ModifyDate] datetime not null
+)
+
+
+
+if object_id (N'ContactCenter.FactConversation',N'U') is not null
+CREATE TABLE [ContactCenter].[FactConversation]
+(
+ConversationKey bigint not null,
+ConversationId bigint not null
+
+--select top 100 * from [contactcenter].[Mitel_InteractionFacts]
+--select top 100 * from [contactcenter].[Mitel_QueueFacts]
+--select top 100 * from [contactcenter].[Mitel_DeviceFacts]
+
+)
+ 
+
+ ---- Flex
+ 
+--select top 10 * from flex.FISWalletMapping
+--SELECT top 10 * FROM dbo.[Authorization]  
+--SELECT top 10 * FROM dbo.Monetary 
+--SELECT top 10 * FROM dbo.NonMonetary 
+--SELECT top 10 * FROM dbo.AccountBalance 
+
+
+
+
+--data marts
+
+--select top 100 * from [contactcenter].Mitel_QueuePerformanceByPeriodStats  where QueueOffered >0 
+--select top 100 * from [contactcenter].[Mitel_AgentPerformanceByPeriodStats]
+--select top 100 * from [contactcenter].[Mitel_AgentByQueueByPeriodStats]
+
+
+--*** Key = Key
+
+
+
+SELECT top 10 * FROM fisxtract.Monetary
+SELECT * FROM fisxtract.NonMonetary
+SELECT * FROM fisxtract.[Authorization]
+SELECT * FROM fisxtract.AccountBalance
+
+
+--- Mitel 
+
+end
+

@@ -1,0 +1,133 @@
+/****** Object:  StoredProcedure [dbo].[LoadOrderFactOrder]    Script Date: 9/16/2022 1:39:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROC [dbo].[LoadOrderFactOrder] AS
+BEGIN
+
+/********************************************************************************************************
+*********************************************************************************************************
+** File:	[dbo].[LoadOrderFactOrder]
+** Name:	AP
+** Desc:	
+** Date:	08/15/2022
+******************************
+** Change History
+******************************
+** PR		Date			Author						Description
+** ----		------------	------------------------	-------------------------------------------------
+** 1.0		09/06/2022 		AP 							Initial Creation 
+
+*********************************************************************************************************
+********************************************************************************************************/
+
+	SELECT   [OrderKey] = itd.[OrderKey]
+			,[OrderItemKey] = itd.[OrderItemDataKey]
+			,[OrderTypeKey] = itt.[OrderItemTypeKey]
+			,[OrderStatusKey] = sta.[OrderStatusKey]
+			,[OrderStatusCodeKey]= stc.[OrderStatusCodeKey]
+			,[OrderSourceKey] = src.[OrderSourceKey]
+			,[OrderAmountKey] = amt.[OrderAmountDataKey]
+			,[OrderShippingKey] = shp.[OrderShippingDataKey]
+			,[OrderProviderKey] = prv.[OrderProviderDataKey]
+			,[OrderBenefitKey] = bnf.[OrderBenefitDataKey]
+			,[CreateUser] = itd.[CreateUser]
+			,[CreateDate] = itd.[CreateDate]
+			,[ModifyUser] = itd.[ModifyUser]
+			,[ModifyDate] = itd.[ModifyDate]
+
+		INTO #Order
+		FROM [Order].[DimItemData] itd
+		LEFT JOIN [Order].[DimItemType] itt
+		ON itd.[OrderKey] = itt.[OrderKey]
+        LEFT JOIN [Order].[DimAmountData] amt
+		ON itd.[OrderKey] = amt.[OrderKey]
+	    LEFT JOIN [Order].[DimShippingData] shp
+		ON itd.[OrderKey] = shp.[OrderKey]
+		LEFT JOIN [Order].[DimProviderData] prv
+		ON itd.[OrderKey] = shp.[OrderKey]
+		LEFT JOIN [Order].[DimBenefitData] bnf
+		ON itd.[OrderKey] = bnf.[OrderKey]
+		LEFT JOIN [Order].[DimStatus] sta
+		ON itd.[OrderKey] = sta.[OrderKey]
+		LEFT JOIN [Order].[DimStatusCode] stc
+		ON itd.[OrderKey] = stc.[OrderKey]
+		LEFT JOIN [Order].[DimSource] src
+		ON itd.[OrderKey] = src.[OrderKey]
+
+MERGE [Order].[FactOrder] AS Target
+		USING #Order AS Source ON
+		Target.[OrderKey] = Source.[OrderKey]
+		WHEN MATCHED AND
+		(
+			   ISNULL(Target.[OrderItemKey], '') <> ISNULL(Source.[OrderItemKey] ,'')
+			OR ISNULL(Target.[OrderTypeKey], '') <> ISNULL(Source.[OrderTypeKey] ,'')
+			OR ISNULL(Target.[OrderStatusKey], '') <> ISNULL(Source.[OrderStatusKey] ,'')
+			OR ISNULL(Target.[OrderStatusCodeKey], '') <> ISNULL(Source.[OrderStatusCodeKey] ,'')
+			OR ISNULL(Target.[OrderSourceKey], '') <> ISNULL(Source.[OrderSourceKey] ,'')
+			OR ISNULL(Target.[OrderAmountKey], '') <> ISNULL(Source.[OrderAmountKey] ,'')
+			OR ISNULL(Target.[OrderShippingKey], '') <> ISNULL(Source.[OrderShippingKey] ,'')
+			OR ISNULL(Target.[OrderProviderKey], '') <> ISNULL(Source.[OrderProviderKey] ,'')
+			OR ISNULL(Target.[OrderBenefitKey], '') <> ISNULL(Source.[OrderBenefitKey] ,'')
+			OR ISNULL(Target.[CreateUser], '') <> ISNULL(Source.[CreateUser] ,'')
+			OR ISNULL(Target.[CreateDate], '') <> ISNULL(Source.[CreateDate] ,'')
+			OR ISNULL(Target.[ModifyUser], '') <> ISNULL(Source.[ModifyUser] ,'')
+			OR ISNULL(Target.[ModifyDate], '') <> ISNULL(Source.[ModifyDate] ,'')
+
+		) THEN
+		UPDATE SET
+
+		     Target.[OrderItemKey] = Source.[OrderItemKey] 
+			 , Target.[OrderTypeKey] = Source.[OrderTypeKey] 
+			 , Target.[OrderStatusKey]= Source.[OrderStatusKey] 
+			 , Target.[OrderStatusCodeKey]= Source.[OrderStatusCodeKey] 
+			 , Target.[OrderSourceKey]= Source.[OrderSourceKey] 
+			 , Target.[OrderAmountKey]= Source.[OrderAmountKey] 
+			 , Target.[OrderShippingKey]= Source.[OrderShippingKey] 
+			 , Target.[OrderProviderKey]= Source.[OrderProviderKey] 
+			 , Target.[OrderBenefitKey]= Source.[OrderBenefitKey] 
+			 , Target.[CreateUser]= Source.[CreateUser]
+			 , Target.[CreateDate]= Source.[CreateDate]
+			 , Target.[ModifyUser]= Source.[ModifyUser]
+			 , Target.[ModifyDate]= Source.[ModifyDate]
+
+
+		WHEN NOT MATCHED BY TARGET THEN
+		INSERT
+		(
+             [OrderKey] 
+			,[OrderItemKey] 
+			,[OrderTypeKey]
+			,[OrderStatusKey] 
+			,[OrderStatusCodeKey]
+			,[OrderSourceKey] 
+			,[OrderAmountKey] 
+			,[OrderShippingKey] 
+			,[OrderProviderKey] 
+			,[OrderBenefitKey] 
+			,[CreateUser] 
+			,[CreateDate] 
+			,[ModifyUser] 
+			,[ModifyDate] 
+
+		)
+		VALUES (
+             SOURCE.[OrderKey] 
+			,SOURCE.[OrderItemKey] 
+			,SOURCE.[OrderTypeKey]
+			,SOURCE.[OrderStatusKey] 
+			,SOURCE.[OrderStatusCodeKey]
+			,SOURCE.[OrderSourceKey] 
+			,SOURCE.[OrderAmountKey] 
+			,SOURCE.[OrderShippingKey] 
+			,SOURCE.[OrderProviderKey] 
+			,SOURCE.[OrderBenefitKey] 
+			,SOURCE.[CreateUser] 
+			,SOURCE.[CreateDate] 
+			,SOURCE.[ModifyUser] 
+			,SOURCE.[ModifyDate]
+
+		);
+
+END
